@@ -2,92 +2,91 @@ require 'formula'
 
 class Gnuradio < Formula
   homepage 'http://gnuradio.org'
-  url  'http://gnuradio.org/releases/gnuradio/gnuradio-3.6.5.1.tar.gz'
-  sha1 '8d3846dc1d00c60b74f06c0bb8f40d57ee257b5a'
-  head 'http://gnuradio.org/git/gnuradio.git'
+  url  'http://gnuradio.org/releases/gnuradio/gnuradio-3.7.3.tar.gz'
+  sha1 'bf208448cbeca8ac1dabca9bbd6fa3f2185a9582'
+  head 'https://gnuradio.org/git/gnuradio.git'
 
-  depends_on 'apple-gcc42' => :build
+  option 'with-wx', 'build gr-wxgui'
+  option 'with-qt', 'build gr-qtgui'
+  option 'with-docs'
+  option 'with-test'
+
+  option 'without-gr-fec'
+  option 'without-gr-trellis'
+  option 'without-gr-noaa'
+  option 'without-gr-atsc'
+  option 'without-gr-pager'
+  option 'without-gr-video-sdl'
+  option 'without-gr-vocoder'
+  option 'without-gr-wavelet'
+
+  depends_on :x11
+
+  # global
   depends_on 'cmake' => :build
-  depends_on 'Cheetah' => :python
-  depends_on 'lxml' => :python
-  depends_on 'numpy' => :python
-  depends_on 'scipy' => :python
-  depends_on 'matplotlib' => :python
-  depends_on 'python'
   depends_on 'boost'
-  depends_on 'cppunit'
-  depends_on 'gsl'
+  depends_on 'cppunit' if build.with? 'test'
   depends_on 'fftw'
+  depends_on 'orc' => :recommended
+
+  # python wrappers
+  depends_on :python
   depends_on 'swig'
+  depends_on 'numpy' => :python
+
+  # docs
+  depends_on 'doxygen' if build.with? 'docs'
+
+  # grc
+  depends_on 'Cheetah' => :python
   depends_on 'pygtk'
-  depends_on 'sdl'
-  depends_on 'libusb'
-  depends_on 'orc'
-  depends_on 'pyqt' if ARGV.include?('--with-qt')
-  depends_on 'pyqwt' if ARGV.include?('--with-qt')
-  depends_on 'doxygen' if ARGV.include?('--with-docs')
+
+  # gr-wavelet
+  depends_on 'gsl' if build.with? 'gr-wavelet'
+
+  # gr-qtgui
+  depends_on 'pyqt' if build.with? 'qt'
+  depends_on 'pyqwt' if build.with? 'qt'
+
+  # gr-wxgui
+  depends_on 'wxpython' if build.with? 'wx'
+  depends_on 'lxml' => :python if build.with? 'wx'
 
   fails_with :clang do
     build 421
     cause "Fails to compile .S files."
   end
 
-  def options
-    [
-      ['--with-qt', 'Build gr-qtgui.'],
-      ['--with-docs', 'Build docs.']
-    ]
-  end
-
-  def patches
-    DATA
-  end
-
   def install
 
-	  # Force compilation with gcc-4.2
-	  ENV['CC'] = '/usr/local/bin/gcc-4.2'
-	  ENV['LD'] = '/usr/local/bin/gcc-4.2'
-	  ENV['CXX'] = '/usr/local/bin/g++-4.2'
+    args = ["-DCMAKE_PREFIX_PATH=#{prefix}"] + std_cmake_args
+    args << "-DQWT_INCLUDE_DIRS=#{HOMEBREW_PREFIX}/lib/qwt.framework/Headers" if build.with? 'qt'
+
+    # From opencv.rb
+    python_prefix = %x(python-config --prefix).chomp
+    args << "-DPYTHON_LIBRARY='#{python_prefix}/Python'"
+    args << "-DPYTHON_INCLUDE_DIR='#{python_prefix}/Headers'"
+
+    # gr modules
+    args << '-DENABLE_GR_QTGUI='    + ((build.with? "qt"        ) ? "ON" : "OFF")
+    args << '-DENABLE_GR_WXGUI='    + ((build.with? 'wx'        ) ? 'ON' : 'OFF')
+    args << '-DENABLE_DOXYGEN='     + ((build.with? "docs"      ) ? "ON" : "OFF")
+    args << '-DENABLE_TESTING='     + ((build.with? 'test'      ) ? 'ON' : 'OFF')
+    args << '-DENABLE_GR_FEC='      + ((build.with? 'gr-fec'    ) ? 'ON' : 'OFF')
+    args << '-DENABLE_GR_TRELLIS='  + ((build.with? 'gr-trellis') ? 'ON' : 'OFF')
+    args << '-DENABLE_GR_NOAA='     + ((build.with? 'gr-noaa'   ) ? 'ON' : 'OFF')
+    args << '-DENABLE_GR_ATSC='     + ((build.with? 'gr-atsc'   ) ? 'ON' : 'OFF')
+    args << '-DENABLE_GR_PAGER='    + ((build.with? 'gr-pager'  ) ? 'ON' : 'OFF')
+    args << '-DENABLE_GR_VIDEO='    + ((build.with? 'gr-video'  ) ? 'ON' : 'OFF')
+    args << '-DENABLE_GR_VOCODER='  + ((build.with? 'gr-vocoder') ? 'ON' : 'OFF')
+    args << '-DENABLE_GR_WAVELET='  + ((build.with? 'gr-wavelet') ? 'ON' : 'OFF')
 
     mkdir 'build' do
-      args = ["-DCMAKE_PREFIX_PATH=#{prefix}", "-DQWT_INCLUDE_DIRS=#{HOMEBREW_PREFIX}/lib/qwt.framework/Headers"] + std_cmake_args
-      args << '-DENABLE_GR_QTGUI=OFF' unless ARGV.include?('--with-qt')
-      args << '-DENABLE_DOXYGEN=OFF' unless ARGV.include?('--with-docs')
-
-      # From opencv.rb
-      python_prefix = `python-config --prefix`.strip
-      # Python is actually a library. The libpythonX.Y.dylib points to this lib, too.
-      if File.exist? "#{python_prefix}/Python"
-        # Python was compiled with --framework:
-        args << "-DPYTHON_LIBRARY='#{python_prefix}/Python'"
-        if !MacOS::CLT.installed? and python_prefix.start_with? '/System/Library'
-          # For Xcode-only systems, the headers of system's python are inside of Xcode
-          args << "-DPYTHON_INCLUDE_DIR='#{MacOS.sdk_path}/System/Library/Frameworks/Python.framework/Versions/2.7/Headers'"
-        else
-          args << "-DPYTHON_INCLUDE_DIR='#{python_prefix}/Headers'"
-        end
-      else
-        python_lib = "#{python_prefix}/lib/lib#{which_python}"
-        if File.exists? "#{python_lib}.a"
-          args << "-DPYTHON_LIBRARY='#{python_lib}.a'"
-        else
-          args << "-DPYTHON_LIBRARY='#{python_lib}.dylib'"
-        end
-        args << "-DPYTHON_INCLUDE_DIR='#{python_prefix}/include/#{which_python}'"
-      end
-      args << "-DPYTHON_PACKAGES_PATH='#{lib}/#{which_python}/site-packages'"
-
       system 'cmake', '..', *args
       system 'make'
       system 'make install'
     end
-  end
 
-  def python_path
-    python = Formula.factory('python')
-    kegs = python.rack.children.reject { |p| p.basename.to_s == '.DS_Store' }
-    kegs.find { |p| Keg.new(p).linked? } || kegs.last
   end
 
   def caveats
@@ -100,25 +99,9 @@ class Gnuradio < Formula
     EOS
   end
 
-  def which_python
-    "python" + `python -c 'import sys;print(sys.version[:3])'`.strip
-  end
 end
 
 __END__
-diff --git a/grc/CMakeLists.txt b/grc/CMakeLists.txt
-index f54aa4f..db0ce3c 100644
---- a/grc/CMakeLists.txt
-+++ b/grc/CMakeLists.txt
-@@ -25,7 +25,7 @@ include(GrPython)
- GR_PYTHON_CHECK_MODULE("python >= 2.5"     sys          "sys.version.split()[0] >= '2.5'"           PYTHON_MIN_VER_FOUND)
- GR_PYTHON_CHECK_MODULE("Cheetah >= 2.0.0"  Cheetah      "Cheetah.Version >= '2.0.0'"                CHEETAH_FOUND)
- GR_PYTHON_CHECK_MODULE("lxml >= 1.3.6"     lxml.etree   "lxml.etree.LXML_VERSION >= (1, 3, 6, 0)"   LXML_FOUND)
--GR_PYTHON_CHECK_MODULE("pygtk >= 2.10.0"   gtk          "gtk.pygtk_version >= (2, 10, 0)"           PYGTK_FOUND)
-+GR_PYTHON_CHECK_MODULE("pygtk >= 2.10.0"   pygtk        True                                        PYGTK_FOUND)
- GR_PYTHON_CHECK_MODULE("numpy"             numpy        True                                        NUMPY_FOUND)
- 
- ########################################################################
 diff --git a/gr-qtgui/lib/spectrumdisplayform.ui b/gr-qtgui/lib/spectrumdisplayform.ui
 index 049d4ff..a40502b 100644
 --- a/gr-qtgui/lib/spectrumdisplayform.ui
