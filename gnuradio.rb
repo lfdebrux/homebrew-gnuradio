@@ -94,17 +94,3 @@ class Gnuradio < Formula
   end
 
 end
-
-__END__
-diff --git a/gr-qtgui/lib/spectrumdisplayform.ui b/gr-qtgui/lib/spectrumdisplayform.ui
-index 049d4ff..a40502b 100644
---- a/gr-qtgui/lib/spectrumdisplayform.ui
-+++ b/gr-qtgui/lib/spectrumdisplayform.ui
-@@ -518,7 +518,6 @@
-   </layout>
-  </widget>
-  <layoutdefault spacing="6" margin="11"/>
-- <pixmapfunction>qPixmapFromMimeSource</pixmapfunction>
-  <customwidgets>
-   <customwidget>
-    <class>QwtWheel</class>
