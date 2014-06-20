@@ -52,15 +52,9 @@ class Gnuradio < Formula
   depends_on 'wxpython' if build.with? 'wx'
   depends_on 'lxml' => :python if build.with? 'wx'
 
-  fails_with :clang do
-    build 421
-    cause "Fails to compile .S files."
-  end
-
   def install
 
-    args = ["-DCMAKE_PREFIX_PATH=#{prefix}"] + std_cmake_args
-    args << "-DQWT_INCLUDE_DIRS=#{HOMEBREW_PREFIX}/lib/qwt.framework/Headers" if build.with? 'qt'
+    args = std_cmake_args
 
     # From opencv.rb
     python_prefix = %x(python-config --prefix).chomp
