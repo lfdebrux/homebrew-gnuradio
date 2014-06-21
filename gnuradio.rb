@@ -75,22 +75,16 @@ class Gnuradio < Formula
     args << '-DENABLE_GR_VOCODER='  + ((build.with? 'gr-vocoder') ? 'ON' : 'OFF')
     args << '-DENABLE_GR_WAVELET='  + ((build.with? 'gr-wavelet') ? 'ON' : 'OFF')
 
+    # edit the default grc.conf file so that brewed blocks 
+    # show up in grc list without further config
+    inreplace 'grc/grc.conf.in', '@blocksdir@', "#{HOMEBREW_PREFIX}/share/gnuradio/grc/blocks"
+
     mkdir 'build' do
       system 'cmake', '..', *args
       system 'make'
       system 'make install'
     end
 
-  end
-
-  def caveats
-    <<-EOS.undent
-    If you want to use custom blocks, create this file:
-
-    ~/.gnuradio/config.conf
-      [grc]
-      local_blocks_path=/usr/local/share/gnuradio/grc/blocks
-    EOS
   end
 
 end
